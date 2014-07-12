@@ -7,6 +7,7 @@ data_dir="testcases/"
 src_dir="src/"
 bin_dir="bin/"
 mem_limit="$((256 * 1024))"
+time_limit="2s"
 mkdir -p "$bin_dir"
 mkdir -p "$src_dir"
 
@@ -22,7 +23,7 @@ function run {
     local stu_input="$2"
     shift 2
     (ulimit -v $mem_limit && \
-        timeout -k 0 2s "$stu_prog" "$stu_input" $@ 2> /dev/null)
+        timeout -k 0 "$time_limit" "$stu_prog" "$stu_input" $@ 2> /dev/null)
 }
 
 function special_judge {
