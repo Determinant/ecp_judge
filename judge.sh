@@ -6,6 +6,7 @@ stu_output="/tmp/judge.stu_output"
 data_dir="testcases/"
 src_dir="src/"
 bin_dir="bin/"
+mem_limit="$((256 * 1024))"
 mkdir -p "$bin_dir"
 mkdir -p "$src_dir"
 
@@ -16,9 +17,17 @@ function test_exp {
     [[ $(guile -c "(display (< (magnitude (- $exp $val)) $eps))") == "#t" ]]
 }
 
+function run {
+    local stu_prog="$1"
+    local stu_input="$2"
+    shift 2
+    (ulimit -v $mem_limit && \
+        timeout -k 0 2s "$stu_prog" "$stu_input" $@ 2> /dev/null)
+}
+
 function special_judge {
     local datafile="$1"
-    local stuprog="$2"
+    local stu_prog="$2"
     local lvl=0
     local buff=""
     local exps=()
@@ -38,12 +47,12 @@ function special_judge {
         fi
     done < "$datafile"
     IFS=$'\n'
-        for exp in "${exps[@]}"
-        do 
-            echo "(display $exp)"
-            echo "(display \"\n\")"
-        done > "$stu_input"
-        res=($("$stuprog" "$stu_input" $@ 2> /dev/null))
+    for exp in "${exps[@]}"
+    do 
+        echo "(display $exp)"
+        echo "(display \"\n\")"
+    done > "$stu_input"
+    res=($(run "$stu_prog" "$stu_input" $@))
     local i=0
     for exp in "${exps[@]}"; do
         test_exp "$exp" "${res[i]}"
@@ -60,9 +69,9 @@ function special_judge {
 
 function fullcmp_judge {
     local datafile="$1"
-    local stuprog="$2"
+    local stu_prog="$2"
     echo 1>&2 "*** Judge: $datafile ***"
-    "$stuprog" "$datafile" > "$stu_output"
+    run "$stu_prog" "$datafile" > "$stu_output"
     guile -s "$datafile" | diff - "$stu_output"
 }
 
@@ -81,17 +90,17 @@ function float_eval()
 
 function all_judge {
     local __score="$1"
-    local stuprog="$2"
+    local stu_prog="$2"
     local correct0=0
     local correct1=0
     local all0=0
     local all1=0
     for c in "$data_dir/arithmetic/"*.scm; do
-        (special_judge "$c" "$stuprog") && ((correct0++))
+        (special_judge "$c" "$stu_prog") && ((correct0++))
         let all0++
     done
     for c in "$data_dir/misc/"*.scm; do
-        (fullcmp_judge "$c" "$stuprog") && ((correct1++))
+        (fullcmp_judge "$c" "$stu_prog") && ((correct1++))
         let all1++
     done
     echo "correct0 = $correct0, all0 = $all0"
@@ -106,6 +115,8 @@ function build {
 }
 
 function judge {
+    local src_dir="$1"
+    local bin_dir="$2"
     for stu_dir in "$src_dir"/*; do
         echo "$stu_dir"
         if [ -d "$stu_dir" ]; then
@@ -119,4 +130,4 @@ function judge {
     done
 }
 
-judge
+judge "$src_dir" "$bin_dir"
