@@ -8,16 +8,21 @@ src_dir="src/"
 bin_dir="bin/"
 mem_limit="$((1024 * 1024))"
 time_limit="20s"
-#datasets=('exact 0' 'extra 0' 'inexact 1' 'weak 0')
-datasets=('exact 0' 'simple 0' 'inexact 1' 'extra 0')
+#datasets=('exact 0' 'simple 0' 'inexact 1' 'extra 0')
+datasets=('inexact 1')
 mkdir -p "$bin_dir"
 mkdir -p "$src_dir"
 
 function test_exp {
     local exp=$1
     local val=$2
-    echo "exp: \"$exp\", val: \"$val\""
+    echo 1>&2 "exp: \"$exp\", val: \"$val\""
 #    [[ $(guile -c "(display (< (magnitude (- $exp $val)) $eps))") == "#t" ]]
+    echo 1>&2 "(display 
+    (let ((d (magnitude (- $exp $val)))
+    (m0 (magnitude $val)))
+    (if (> m0 $eps) (set! d (min d (/ d m0))))
+    (< d $eps)))"
     [[ $(guile -c "(display 
     (let ((d (magnitude (- $exp $val)))
     (m0 (magnitude $val)))
@@ -59,18 +64,17 @@ function special_judge {
     for exp in "${exps[@]}"
     do 
         echo "(display $exp)"
-        echo "(display \"\n\")"
     done > "$stu_input"
-    echo "Special Judge: $stu_intput" >> judge_run.log
+    echo "Special Judge: $stu_input" >> judge_run.log
     res=($(run "$stu_prog" < "$stu_input"))
     local i=0
     for exp in "${exps[@]}"; do
         test_exp "$exp" "${res[i]}"
         if [[ "$?" != "0" ]]; then
-            echo "Wrong!"
+            echo 1>&2 "SJ: Wrong!"
             return 1
         else
-            echo "OK."
+            echo 1>&2 "SJ: OK."
         fi
         let i++
     done
@@ -80,8 +84,8 @@ function special_judge {
 function fullcmp_judge {
     local datafile="$1"
     local stu_prog="$2"
-    echo 1>&2 "*** Judge: $datafile ***"
-    echo "Special Judge: $datafile" >> judge_run.log
+    echo 1>&2 "*** Fullcmp Judge: $datafile ***"
+    echo "Fullcmp Judge: $datafile" >> judge_run.log
     run "$stu_prog" < "$datafile" > "$stu_output"
     guile -s "$datafile" | diff - "$stu_output" > /dev/null #>> judge.log
 }
@@ -108,7 +112,7 @@ function all_judge {
         local correct=0
         local j
         for c in "$data_dir/${d[0]}/"*.scm; do
-            if (("${d[0]}" == 1)); then
+            if (("${d[1]}" == 1)); then
                 j=special_judge
             else
                 j=fullcmp_judge
