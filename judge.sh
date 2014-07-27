@@ -47,24 +47,39 @@ function special_judge {
     local exps=()
     shift 2
     echo 1>&2 "*** Special Judge: $datafile ***"
+
+    function exp_flush {
+        if [[ "$lvl" -eq 0 && -n "$buff" ]]; then
+            exps+=("$buff")
+            #echo 1>&2 "Found expression: $buff"
+            buff=""
+        fi
+    }
+
+    function isspace {
+        [[ "${ch:-$'\n'}" == $'\n' || "$ch" == ' ' || "$ch" == $'\t' ]]
+    }
+
     while IFS="" read -rn 1 ch; do
-        buff+="${ch:-$'\n'}"
+        if [[ !("$lvl" -eq 0) ]] || ! isspace "$ch"; then
+            buff+="${ch:-$'\n'}"
+        fi
         if [[ "$ch" == "(" ]]; then
             let lvl++
         elif [[ "$ch" == ")" ]]; then
             let lvl--
-            if [[ "$lvl" -eq 0 && -n "$buff" ]]; then
-                exps+=("$buff")
-                #echo 1>&2 "Found expression: $buff"
-                buff=""
-            fi
+            exp_flush
+        elif [[ "$lvl" -eq 0 ]] && isspace "$ch"; then
+            exp_flush
         fi
     done < "$datafile"
+
     IFS=$'\n'
     for exp in "${exps[@]}"
     do 
-        echo "(display $exp)"
+        echo "(display $exp) (display \"\n\")"
     done > "$stu_input"
+
     echo "Special Judge: $stu_input" >> judge_run.log
     res=($(run "$stu_prog" < "$stu_input"))
     local i=0
