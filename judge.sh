@@ -18,16 +18,14 @@ function test_exp {
     local val=$2
     echo 1>&2 "exp: \"$exp\", val: \"$val\""
 #    [[ $(guile -c "(display (< (magnitude (- $exp $val)) $eps))") == "#t" ]]
-    echo 1>&2 "(display 
+    guile_exp="(display 
     (let ((d (magnitude (- $exp $val)))
     (m0 (magnitude $val)))
     (if (> m0 $eps) (set! d (min d (/ d m0))))
     (< d $eps)))"
-    [[ $(guile -c "(display 
-    (let ((d (magnitude (- $exp $val)))
-    (m0 (magnitude $val)))
-    (if (> m0 $eps) (set! d (min d (/ d m0))))
-    (< d $eps)))") == "#t" ]]
+
+    echo 1>&2 "$guile_exp" >> judge_run.log
+    [[ $(guile -c "$guile_exp") == "#t" ]]
 }
 
 function run {
@@ -102,7 +100,7 @@ function fullcmp_judge {
     echo 1>&2 "*** Fullcmp Judge: $datafile ***"
     echo "Fullcmp Judge: $datafile" >> judge_run.log
     run "$stu_prog" < "$datafile" > "$stu_output"
-    guile -s "$datafile" | diff - "$stu_output" > /dev/null #>> judge.log
+    guile -s "$datafile" | diff - "$stu_output" > /dev/null
 }
 
 function float_eval()
