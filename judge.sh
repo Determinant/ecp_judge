@@ -9,23 +9,28 @@ bin_dir="bin/"
 mem_limit="$((1024 * 1024))"
 time_limit="20s"
 #datasets=('exact 0' 'simple 0' 'inexact 1' 'extra 0')
+#datasets=('simple 0')
 datasets=('inexact 1')
 mkdir -p "$bin_dir"
 mkdir -p "$src_dir"
+trap "kill 0" SIGINT
 
 function test_exp {
     local exp=$1
     local val=$2
-    echo 1>&2 "exp: \"$exp\", val: \"$val\""
-#    [[ $(guile -c "(display (< (magnitude (- $exp $val)) $eps))") == "#t" ]]
+    #    echo 1>&2 "exp: \"$exp\", val: \"$val\""
+    #    [[ $(guile -c "(display (< (magnitude (- $exp $val)) $eps))") == "#t" ]]
+    if [[ -z "$val" ]]; then
+        return 1;
+    fi
     guile_exp="(display 
-    (let ((d (magnitude (- $exp $val)))
-    (m0 (magnitude $val)))
-    (if (> m0 $eps) (set! d (min d (/ d m0))))
-    (< d $eps)))"
+                (let ((d (magnitude (- $exp $val)))
+                    (m0 (magnitude $val)))
+                    (if (> m0 $eps) (set! d (min d (/ d m0))))
+                    (< d $eps)))"
 
     echo 1>&2 "$guile_exp" >> judge_run.log
-    [[ $(guile -c "$guile_exp") == "#t" ]]
+    [[ $(guile -c "$guile_exp") == "#t" && "$?" -eq 0 ]]
 }
 
 function run {
@@ -75,7 +80,7 @@ function special_judge {
     IFS=$'\n'
     for exp in "${exps[@]}"
     do 
-        echo "(display $exp) (display \"\n\")"
+        echo "(display $exp) (newline)"
     done > "$stu_input"
 
     echo "Special Judge: $stu_input" >> judge_run.log
