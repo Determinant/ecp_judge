@@ -8,9 +8,9 @@ src_dir="src/"
 bin_dir="bin/"
 mem_limit="$((1024 * 1024))"
 time_limit="20s"
-#datasets=('exact 0' 'simple 0' 'inexact 1' 'extra 0')
+datasets=('naive 1' 'naive2 0' 'exact 0' 'simple 0' 'inexact 1' 'extra 0')
 #datasets=('simple 0')
-datasets=('inexact 1')
+#datasets=('inexact 1')
 mkdir -p "$bin_dir"
 mkdir -p "$src_dir"
 trap "kill 0" SIGINT
@@ -29,17 +29,17 @@ function test_exp {
                     (if (> m0 $eps) (set! d (min d (/ d m0))))
                     (< d $eps)))"
 
-    echo 1>&2 "$guile_exp" >> judge_run.log
+    echo 1>&2 "$guile_exp" >> /dev/null
     [[ $(guile -c "$guile_exp") == "#t" && "$?" -eq 0 ]]
 }
 
 function run {
     local stu_prog="$1"
     shift 1
-    echo "** Running $stu_prog.. ***" >> judge_run.log
+    echo "** Running $stu_prog.. ***" >> /dev/null
     (ulimit -v $mem_limit && \
-        timeout -k 0 "$time_limit" "$stu_prog" $@ 2>> judge_run.log)
-    echo "** Done ***" >> judge_run.log
+        timeout -k 0 "$time_limit" "$stu_prog" $@ 2>> /dev/null)
+    echo "** Done ***" >> /dev/null
 }
 
 function special_judge {
@@ -83,7 +83,7 @@ function special_judge {
         echo "(display $exp) (newline)"
     done > "$stu_input"
 
-    echo "Special Judge: $stu_input" >> judge_run.log
+    echo "Special Judge: $stu_input" >> /dev/null
     res=($(run "$stu_prog" < "$stu_input"))
     local i=0
     for exp in "${exps[@]}"; do
@@ -103,7 +103,7 @@ function fullcmp_judge {
     local datafile="$1"
     local stu_prog="$2"
     echo 1>&2 "*** Fullcmp Judge: $datafile ***"
-    echo "Fullcmp Judge: $datafile" >> judge_run.log
+    echo "Fullcmp Judge: $datafile" >> /dev/null
     run "$stu_prog" < "$datafile" > "$stu_output"
     guile -s "$datafile" | diff - "$stu_output" > /dev/null
 }
@@ -165,7 +165,9 @@ function judge {
             stu_name=$(basename "$stu_dir")
             stu_bin="$bin_dir/$stu_name"
             { build "$stu_bin" "$stu_dir" && all_judge score "$stu_bin"; } || \
-            { echo 1>&2 "Failed to build student src: $stu_dir" && continue; }
+            { echo 1>&2 "Failed to build student src: $stu_dir"; 
+                echo "$stu_dir" >> build_failed_re.log;
+                continue; }
             printf "%s" $stu_name
             for s in "${score[@]}"; do
                 printf "\t\t%s" $s
@@ -175,4 +177,4 @@ function judge {
     done
 }
 
-judge "$src_dir" "$bin_dir" > result
+judge "$src_dir" "$bin_dir" >> result
