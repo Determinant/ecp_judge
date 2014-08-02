@@ -1,0 +1,1 @@
+(display (odd? 0))
